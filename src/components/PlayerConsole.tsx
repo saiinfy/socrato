@@ -3,26 +3,37 @@ import type { Player } from '../../types';
 
 const PlayerConsole: React.FC<{ player: Player | null; playerStats: { rank: string; pointsBehind: number; isLeader: boolean; }; isDarkTheme: boolean }> = ({ player, playerStats, isDarkTheme }) => {
     if (!player) return null;
-    const themeClasses = isDarkTheme 
-        ? 'bg-black/30 backdrop-blur-md text-white border-white/20' 
-        : 'bg-white/70 backdrop-blur-md text-slate-800 border-slate-200';
-
+    
     return (
-        <div className={`w-full max-w-4xl mx-auto p-3 rounded-2xl border shadow-xl animate-slide-in-up ${themeClasses}`}>
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <img src={player.avatar} alt="Your avatar" className="w-12 h-12 rounded-full border-2 border-white/50 shadow-lg"/>
-                    <div>
-                        <p className="font-bold text-lg leading-tight">{player.name}</p>
+        <div className="w-full max-w-2xl mx-auto px-4 py-2 bg-white rounded-full shadow-lg border border-slate-100 flex items-center justify-between animate-slide-in-up">
+            <div className="flex items-center gap-2">
+                <div className="relative">
+                    <img src={player.avatar} alt="Your avatar" className="w-10 h-10 rounded-full border-2 border-white shadow-sm"/>
+                    <div className="absolute -top-1 -left-1 bg-yellow-400 text-[10px] font-bold px-1 rounded-full border border-white">
+                        #{playerStats.rank}
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="font-bold text-3xl leading-tight">#{playerStats.rank}</p>
-                    {playerStats.isLeader ? (
-                        <p className={`text-sm font-semibold ${isDarkTheme ? 'text-yellow-300' : 'text-amber-600'} animate-pulse`}>You're in the lead!</p>
-                    ) : (
-                        <p className={`text-sm ${isDarkTheme ? 'opacity-80' : 'text-slate-600'}`}>{playerStats.pointsBehind} pts behind 1st</p>
-                    )}
+                <div className="flex flex-col">
+                    <span className="font-bold text-sm text-slate-800 leading-none">{player.name}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        {playerStats.isLeader ? "YOU ARE IN THE LEAD!" : `${playerStats.pointsBehind} PTS BEHIND 1ST`}
+                    </span>
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Streak</span>
+                    <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
+                        <span className="text-xs">🔥</span>
+                        <span className="text-xs font-bold text-orange-600">{player.correctStreak || 0}</span>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Score</span>
+                    <span className="text-sm font-black text-indigo-700 leading-none">
+                        {player.score.toLocaleString()}
+                    </span>
                 </div>
             </div>
         </div>

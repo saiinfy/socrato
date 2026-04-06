@@ -47,10 +47,54 @@ const LobbyPage = () => {
     const joinUrl = `${window.location.origin}${window.location.pathname}#/join/${quiz.id}`;
     
     const handleCopyLink = () => {
-        navigator.clipboard.writeText(joinUrl).then(() => {
-            setIsCopied(true);
-            setTimeout(() => setIsCopied(false), 2000);
-        });
+        const copyToClipboard = async (text: string) => {
+            // 1. Try modern Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return; // Success!
+                } catch (err) {
+                    // Modern Clipboard API failed (likely due to iframe permissions policy),
+                    // we'll silently attempt the fallback below.
+                }
+            }
+            
+            // 2. Fallback for older browsers or restricted environments (like iframes)
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Ensure textarea is not visible but still functional
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (!successful) {
+                    throw new Error('execCommand copy failed');
+                }
+            } catch (err) {
+                document.body.removeChild(textArea);
+                throw err;
+            }
+        };
+
+        copyToClipboard(joinUrl)
+            .then(() => {
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            })
+            .catch((err) => {
+                console.error('All copy methods failed: ', err);
+                // Final fallback: just show the URL in a way they can manually copy if needed
+                // but usually execCommand works if triggered by a click.
+            });
     };
     
     const handleStartQuiz = async () => {

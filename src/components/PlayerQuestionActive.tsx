@@ -41,20 +41,18 @@ export const PlayerQuestionActive: React.FC<PlayerQuestionActiveProps> = ({
             return;
         }
     
-        if (quiz.gameState !== GameState.QUESTION_ACTIVE) {
-            const sortedPlayers = [...allPlayers].sort((a, b) => b.score - a.score);
-            const playerIndex = sortedPlayers.findIndex(p => p.id === player.id);
-            
-            if (playerIndex === -1) return;
-    
-            const rank = playerIndex + 1;
-            const isLeader = rank === 1;
-            const leaderScore = sortedPlayers[0].score;
-            const playerScore = sortedPlayers[playerIndex].score;
-            const pointsBehind = leaderScore - playerScore;
-    
-            setPlayerStats({ rank: rank.toString(), pointsBehind, isLeader });
-        }
+        const sortedPlayers = [...allPlayers].sort((a, b) => b.score - a.score);
+        const playerIndex = sortedPlayers.findIndex(p => p.id === player.id);
+        
+        if (playerIndex === -1) return;
+
+        const rank = playerIndex + 1;
+        const isLeader = rank === 1;
+        const leaderScore = sortedPlayers[0].score;
+        const playerScore = sortedPlayers[playerIndex].score;
+        const pointsBehind = leaderScore - playerScore;
+
+        setPlayerStats({ rank: rank.toString(), pointsBehind, isLeader });
     }, [allPlayers, player, quiz.gameState]);
 
     useEffect(() => {
@@ -69,241 +67,203 @@ export const PlayerQuestionActive: React.FC<PlayerQuestionActiveProps> = ({
     useEffect(() => {
         if (quiz.gameState === GameState.QUESTION_ACTIVE) {
             setShowGoAnimation(true);
-            const timer = setTimeout(() => setShowGoAnimation(false), 1500); // Animation lasts 1.5s
+            const timer = setTimeout(() => setShowGoAnimation(false), 1500);
             return () => clearTimeout(timer);
         }
     }, [quiz.gameState]);
     
-    const optionBgColors = useMemo(() => ['bg-red-500', 'bg-gl-orange-500', 'bg-yellow-400', 'bg-green-500', 'bg-purple-500', 'bg-pink-500'], []);
+    const optionColors = useMemo(() => [
+        'bg-[#ef4444] border-[#b91c1c]', // Red
+        'bg-[#3b82f6] border-[#1d4ed8]', // Blue
+        'bg-[#facc15] border-[#a16207]', // Yellow
+        'bg-[#22c55e] border-[#15803d]', // Green
+        'bg-[#a855f7] border-[#7e22ce]', // Purple
+        'bg-[#ec4899] border-[#be185d]', // Pink
+    ], []);
+
     const isInteractive = quiz.gameState === GameState.QUESTION_ACTIVE;
 
-    const renderQuestionBody = () => {
-        const lifelinesBlock = (
-            question.type === QuestionType.MCQ && quiz.gameState === GameState.QUESTION_ACTIVE &&
-            <div className="lifeline-bar">
+    const renderLifelines = () => {
+        if (question.type !== QuestionType.MCQ) return null;
+        
+        return (
+            <div className="flex justify-center gap-8 my-2">
                 {/* 50:50 Lifeline */}
-                <div className="lifeline-item">
-                    <button
-                        onClick={() => handleLifelineClick('fiftyFifty')}
-                        disabled={isUsingLifeline || lifelineUsedThisTurn !== null}
-                        className={`lifeline-button fifty-fifty-lifeline ${!canUseFiftyFifty && lifelineUsedThisTurn === null ? 'opacity-60' : ''}`}
-                        aria-label={`Use 50-50 Lifeline for ${fiftyFiftyCost} points`}
-                    >
-                        <FiftyFiftyIcon />
-                        {lifelineUsedThisTurn === 'fiftyFifty' && (
-                            <div className="lifeline-used-overlay">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <div className="flex flex-col items-center gap-1">
+                    <div className="relative">
+                        <button
+                            onClick={() => handleLifelineClick('fiftyFifty')}
+                            disabled={isUsingLifeline || lifelineUsedThisTurn !== null || !canUseFiftyFifty}
+                            className={`w-14 h-14 bg-white rounded-xl shadow-md border border-slate-100 flex items-center justify-center transition-all active:scale-95 ${!canUseFiftyFifty || lifelineUsedThisTurn !== null ? 'opacity-40 grayscale' : 'hover:shadow-lg'}`}
+                        >
+                            <FiftyFiftyIcon className="w-8 h-8" />
+                            {lifelineUsedThisTurn === 'fiftyFifty' && (
+                                <div className="absolute inset-0 bg-slate-900/20 rounded-xl flex items-center justify-center">
+                                    <div className="w-8 h-1 bg-red-500 rotate-45 absolute"></div>
+                                    <div className="w-8 h-1 bg-red-500 -rotate-45 absolute"></div>
+                                </div>
+                            )}
+                        </button>
+                        <div className="absolute -top-2 -right-2 bg-slate-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-white">
+                            -{fiftyFiftyCost}
+                        </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">50:50</span>
+                </div>
+
+                {/* Point Doubler Lifeline */}
+                <div className="flex flex-col items-center gap-1">
+                    <div className="relative">
+                        <button
+                            onClick={() => handleLifelineClick('pointDoubler')}
+                            disabled={isUsingLifeline || lifelineUsedThisTurn !== null || !canUsePointDoubler}
+                            className={`w-14 h-14 bg-white rounded-xl shadow-md border border-slate-100 flex items-center justify-center transition-all active:scale-95 ${!canUsePointDoubler || lifelineUsedThisTurn !== null ? 'opacity-40 grayscale' : 'hover:shadow-lg'}`}
+                        >
+                            {player.lifelines.pointDoubler > 0 ? (
+                                <PointDoublerIcon className="w-8 h-8 text-indigo-600" />
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0110 0v4" />
                                 </svg>
+                            )}
+                        </button>
+                        {player.lifelines.pointDoubler > 0 && (
+                            <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-white flex items-center gap-0.5">
+                                🔥 {player.lifelines.pointDoubler}
                             </div>
                         )}
-                    </button>
-                    <span className="lifeline-label">-{fiftyFiftyCost} pts</span>
-                </div>
-        
-                {/* Point Doubler Lifeline */}
-                <div className="lifeline-item">
-                    <button
-                        onClick={() => handleLifelineClick('pointDoubler')}
-                        disabled={isUsingLifeline || lifelineUsedThisTurn !== null}
-                        className={`lifeline-button point-doubler-lifeline ${lifelineUsedThisTurn === 'pointDoubler' ? 'active-lifeline-glow' : ''} ${!canUsePointDoubler && lifelineUsedThisTurn === null ? 'opacity-60' : ''}`}
-                        aria-label="Use Point Doubler Lifeline"
-                    >
-                        <PointDoublerIcon />
-                        {player.lifelines.pointDoubler > 0 && lifelineUsedThisTurn === null && (
-                             <span className="lifeline-badge">
-                                {player.lifelines.pointDoubler}
-                            </span>
-                        )}
-                    </button>
-                    <span className="lifeline-label">Use 2x</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">2X</span>
                 </div>
             </div>
         );
+    };
 
+    const renderMCQ = () => (
+        <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
+            {/* Question Card */}
+            <div className="relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-full shadow-md z-10 uppercase tracking-widest">
+                    Question {quiz.currentQuestionIndex + 1}/{quiz.questions.length}
+                </div>
+                <div className="bg-white rounded-3xl shadow-xl p-6 pt-8 text-center border border-slate-50">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-800 leading-tight">
+                        {question.text}
+                    </h1>
+                </div>
+            </div>
+
+            {/* Options Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {question.options.map((opt, i) => {
+                    const isEliminated = eliminatedOptions.includes(i);
+                    return (
+                        <button
+                            key={i}
+                            onClick={() => submitAnswer(i)}
+                            disabled={!isInteractive || isEliminated}
+                            className={`relative w-full min-h-[70px] p-4 text-white font-black text-sm sm:text-base rounded-2xl border-b-4 transition-all active:translate-y-1 active:border-b-0 disabled:opacity-30 disabled:cursor-not-allowed ${optionColors[i % optionColors.length]} ${isEliminated ? 'grayscale' : 'hover:brightness-110'}`}
+                        >
+                            <span className="block w-full break-words">{opt}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {renderLifelines()}
+        </div>
+    );
+
+    const renderQuestionBody = () => {
         switch (question.type) {
-             case QuestionType.WORD_CLOUD:
+            case QuestionType.MCQ:
+            case QuestionType.SURVEY:
+                return renderMCQ();
+            case QuestionType.WORD_CLOUD:
                 return (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                         <div className="flex-grow flex items-center justify-center w-full">
-                            <div className="relative w-full max-w-md">
-                                <h1 className="text-xl sm:text-2xl font-bold text-center mb-4 text-slate-800 bg-white/70 backdrop-blur-sm p-3 rounded-xl">{question.text}</h1>
-                                {!isInteractive && (
-                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/75 text-white p-4 animate-fade-in rounded-lg" aria-live="polite">
-                                        <h2 className="text-4xl font-bold animate-pulse">Get Ready</h2>
-                                    </div>
-                                )}
-                                <div className="space-y-6">
-                                     <input
-                                        type="text"
-                                        value={wordCloudInput}
-                                        onChange={(e) => setWordCloudInput(e.target.value)}
-                                        disabled={!isInteractive}
-                                        className="w-full bg-white border border-slate-300 rounded-md p-4 text-xl focus:ring-2 focus:ring-[#ff5f2d] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                                        placeholder="Type your answer here..."
-                                        maxLength={50}
-                                     />
-                                     <Button onClick={() => submitAnswer(wordCloudInput)} disabled={!isInteractive || !wordCloudInput.trim()} className="bg-[#ff5f2d] hover:bg-orange-600">Submit</Button>
-                                 </div>
-                             </div>
-                        </div>
-                         <div className="flex-shrink-0 w-full pt-4"><MemoizedPlayerConsole player={player} playerStats={playerStats} isDarkTheme={false} /></div>
+                    <div className="w-full max-w-md mx-auto space-y-4">
+                        <h1 className="text-xl font-black text-center text-slate-800">{question.text}</h1>
+                        <input
+                            type="text"
+                            value={wordCloudInput}
+                            onChange={(e) => setWordCloudInput(e.target.value)}
+                            disabled={!isInteractive}
+                            className="w-full bg-white border-2 border-slate-200 rounded-2xl p-4 text-lg font-bold focus:border-indigo-500 focus:outline-none disabled:opacity-60"
+                            placeholder="Type your answer..."
+                        />
+                        <Button onClick={() => submitAnswer(wordCloudInput)} disabled={!isInteractive || !wordCloudInput.trim()} className="bg-indigo-600">Submit</Button>
                     </div>
                 );
             case QuestionType.MATCH:
-                if (!question.matchPairs) return <div>Error: Match question is missing data.</div>;
-                
-                const handleMatchSelection = (promptIndex: number, selectedValue: string) => {
-                    const newMatches = [...selectedMatches];
-                    const valueAsNumber = parseInt(selectedValue, 10);
-                    newMatches[promptIndex] = isNaN(valueAsNumber) ? null : valueAsNumber;
-                    setSelectedMatches(newMatches);
-                };
-
                 return (
-                     <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                        <div className="flex-grow flex items-center justify-center w-full">
-                            <div className="relative w-full max-w-lg">
-                                 <h1 className="text-xl sm:text-2xl font-bold text-center mb-3 text-slate-800 bg-white/70 backdrop-blur-sm p-3 rounded-xl">{question.text}</h1>
-                                {!isInteractive && (
-                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/75 text-white p-4 animate-fade-in rounded-lg" aria-live="polite">
-                                        <h2 className="text-4xl font-bold animate-pulse">Get Ready</h2>
-                                    </div>
-                                )}
-                                 <div>
-                                     <div className={`w-full space-y-3 overflow-y-auto px-2 pb-4 max-h-[50vh] ${!isInteractive ? 'opacity-60' : ''}`}>
-                                        {question.matchPairs.map((pair, promptIndex) => {
-                                            const usedOptionIndices = selectedMatches.filter(
-                                                (m, i) => m !== null && i !== promptIndex
-                                            ) as number[];
-                                            
-                                            return (
-                                                <div key={promptIndex} className="grid grid-cols-2 gap-2 items-center bg-white/90 p-3 rounded-lg shadow-sm">
-                                                    <div className="font-semibold text-slate-700 pr-2">{pair.prompt}</div>
-                                                    <select
-                                                        value={selectedMatches[promptIndex] ?? ''}
-                                                        onChange={(e) => handleMatchSelection(promptIndex, e.target.value)}
-                                                        disabled={!isInteractive}
-                                                        className="w-full bg-slate-50 border border-slate-300 rounded-md p-2 text-slate-900 focus:ring-2 focus:ring-[#ff5f2d] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                                                    >
-                                                        <option value="" disabled>Select a match...</option>
-                                                        {question.options.map((optionText, optionIndex) => (
-                                                            <option
-                                                                key={optionIndex}
-                                                                value={optionIndex}
-                                                                disabled={usedOptionIndices.includes(optionIndex)}
-                                                            >
-                                                                {optionText}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                     <div className="mt-4 w-full">
-                                        <Button onClick={() => submitAnswer(selectedMatches)} disabled={!isInteractive || selectedMatches.some(m => m === null)} className="bg-[#ff5f2d] hover:bg-orange-600">Submit Answer</Button>
-                                     </div>
-                                 </div>
-                             </div>
-                        </div>
-                        <div className="flex-shrink-0 w-full pt-4"><MemoizedPlayerConsole player={player} playerStats={playerStats} isDarkTheme={false} /></div>
-                    </div>
-                );
-
-            case QuestionType.MCQ:
-            case QuestionType.SURVEY:
-                return !quiz.config.showQuestionToPlayers ? (
-                    <div className="w-full h-full flex flex-col p-4 relative">
-                        {!isInteractive && (
-                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 text-white p-4 animate-fade-in" aria-live="polite">
-                                <h2 className="text-5xl font-bold animate-pulse">Get Ready</h2>
-                            </div>
-                        )}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-                            {question.options.map((opt, i) => {
-                                const isEliminated = eliminatedOptions.includes(i);
-                                return (
-                                    <button
-                                        key={i}
-                                        onClick={() => submitAnswer(i)}
-                                        disabled={!isInteractive || isEliminated}
-                                        className={`flex items-center justify-center p-3 text-lg font-bold text-center rounded-xl shadow-lg transform transition-all duration-300 disabled:cursor-not-allowed text-white ${optionBgColors[i % optionBgColors.length]} ${isEliminated ? 'animate-strike-out bg-slate-400' : 'hover:scale-105 hover:ring-4 ring-offset-2 ring-white'}`}
+                    <div className="w-full max-w-lg mx-auto space-y-3">
+                        <h1 className="text-xl font-black text-center text-slate-800 mb-4">{question.text}</h1>
+                        <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                            {question.matchPairs?.map((pair, idx) => (
+                                <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                                    <span className="flex-1 font-bold text-slate-700 text-sm">{pair.prompt}</span>
+                                    <select
+                                        value={selectedMatches[idx] ?? ''}
+                                        onChange={(e) => {
+                                            const newMatches = [...selectedMatches];
+                                            newMatches[idx] = parseInt(e.target.value, 10);
+                                            setSelectedMatches(newMatches);
+                                        }}
+                                        disabled={!isInteractive}
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold"
                                     >
-                                        {opt}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div className="flex-shrink-0 pt-4 relative">
-                            {lifelinesBlock}
-                            <MemoizedPlayerConsole player={player} playerStats={playerStats} isDarkTheme={false} />
-                        </div>
-                    </div>
-                ) : (
-                    <div className="w-full h-full flex flex-col p-4">
-                        <div className="flex-grow flex items-center justify-center">
-                            <div className="w-full max-w-3xl mx-auto flex flex-col">
-                                <div className="w-full bg-slate-800 text-white p-3 sm:p-4 flex items-center justify-center text-center shadow-lg rounded-t-xl z-10 flex-shrink-0">
-                                    <h1 className="text-base sm:text-lg font-bold">{question.text}</h1>
+                                        <option value="" disabled>Select...</option>
+                                        {question.options.map((opt, optIdx) => (
+                                            <option key={optIdx} value={optIdx} disabled={selectedMatches.includes(optIdx) && selectedMatches[idx] !== optIdx}>{opt}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                                <div className="relative p-3 bg-slate-100/80 backdrop-blur-sm shadow-lg rounded-b-xl">
-                                    {!isInteractive && (
-                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 text-white p-4 animate-fade-in rounded-b-xl" aria-live="polite">
-                                            <h2 className="text-5xl font-bold animate-pulse">Get Ready</h2>
-                                        </div>
-                                    )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {question.options.map((opt, i) => {
-                                            const isEliminated = eliminatedOptions.includes(i);
-                                            return (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => submitAnswer(i)}
-                                                    disabled={!isInteractive || isEliminated}
-                                                    className={`text-white flex items-center p-2 text-left font-semibold rounded-lg shadow-md transform transition-all duration-200 disabled:cursor-not-allowed w-full min-h-[48px] ${optionBgColors[i % optionBgColors.length]} ${isEliminated ? 'animate-strike-out bg-slate-400' : 'hover:brightness-110 hover:scale-[1.02]'}`}
-                                                >
-                                                    <span className="flex-1 break-words">{opt}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
+                            ))}
                         </div>
-                        <div className="flex-shrink-0 w-full pt-4 relative">
-                            {lifelinesBlock}
-                            <MemoizedPlayerConsole player={player} playerStats={playerStats} isDarkTheme={false} />
-                        </div>
+                        <Button onClick={() => submitAnswer(selectedMatches)} disabled={!isInteractive || selectedMatches.some(m => m === null)} className="bg-indigo-600 mt-4">Submit Match</Button>
                     </div>
                 );
+            default:
+                return null;
         }
     };
     
     return (
-        <div className="w-full h-full relative">
+        <div className="w-full h-full flex flex-col p-3 sm:p-4 relative">
             {isInteractive && showGoAnimation && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 pointer-events-none animate-fade-in">
-                    <span className="text-7xl font-extrabold text-white animate-pop-in" style={{ textShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-none animate-fade-in">
+                    <span className="text-8xl font-black text-white animate-pop-in italic tracking-tighter" style={{ textShadow: '4px 4px 0 #4f46e5' }}>
                         GO!
                     </span>
                 </div>
             )}
+            
             {confirmingLifeline && (
-                <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in">
-                    <Card className="text-center">
-                        <h2 className="text-2xl font-bold mb-2">Confirm Lifeline</h2>
-                        <p className="text-slate-600 mb-6">
-                            {confirmingLifeline === 'fiftyFifty' ? `Use 50:50 and spend ${fiftyFiftyCost} points?` : `Use your Point Doubler?`}
+                <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+                    <Card className="max-w-xs w-full text-center p-6">
+                        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            {confirmingLifeline === 'fiftyFifty' ? <FiftyFiftyIcon className="w-8 h-8" /> : <PointDoublerIcon className="w-8 h-8 text-indigo-600" />}
+                        </div>
+                        <h2 className="text-xl font-black mb-2 text-slate-800">Use Lifeline?</h2>
+                        <p className="text-sm font-bold text-slate-500 mb-6">
+                            {confirmingLifeline === 'fiftyFifty' ? `Spend ${fiftyFiftyCost} points to remove two wrong answers?` : `Double your points for this question?`}
                         </p>
-                        <div className="flex gap-4">
-                            <Button onClick={() => setConfirmingLifeline(null)} className="bg-slate-300 hover:bg-slate-400 text-slate-800">Cancel</Button>
-                            <Button onClick={() => handleUseLifeline(confirmingLifeline)} className="bg-gl-orange-600 hover:bg-gl-orange-700">Confirm</Button>
+                        <div className="flex gap-3">
+                            <button onClick={() => setConfirmingLifeline(null)} className="flex-1 py-3 font-black text-slate-400 hover:text-slate-600 transition-colors">Cancel</button>
+                            <button onClick={() => handleUseLifeline(confirmingLifeline)} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95">Confirm</button>
                         </div>
                     </Card>
                 </div>
             )}
-            {renderQuestionBody()}
+
+            <div className="flex-grow flex items-center justify-center">
+                {renderQuestionBody()}
+            </div>
+
+            <div className="mt-auto pt-4">
+                <MemoizedPlayerConsole player={player} playerStats={playerStats} isDarkTheme={false} />
+            </div>
         </div>
     );
 };
