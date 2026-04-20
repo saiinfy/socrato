@@ -20,7 +20,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [name, setName] = useState<string | null>(sessionStorage.getItem('quiz-user-name'));
   const [exp, setExp] = useState<number | null>(Number(sessionStorage.getItem('quiz-exp')) || null);
 
-  const isAuthorized = roles.includes('assessmentcreator');
+  const isAuthorized = roles.includes('quizMeAuthor');
 
   useEffect(() => {
     if (uuid && !name) {
@@ -47,16 +47,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [uuid, name]);
 
-  const setUserData = (newUuid: string, newRoles: string[], newExp: number) => {
+  const setUserData = React.useCallback((newUuid: string, newRoles: string[], newExp: number) => {
     setUuid(newUuid);
     setRoles(newRoles);
     setExp(newExp);
     sessionStorage.setItem('quiz-uuid', newUuid);
     sessionStorage.setItem('quiz-roles', JSON.stringify(newRoles));
     sessionStorage.setItem('quiz-exp', newExp.toString());
-  };
+  }, []);
 
-  const updateProfile = async (newName: string) => {
+  const updateProfile = React.useCallback(async (newName: string) => {
     if (!uuid) return;
     try {
       await db.collection('organizers').doc(uuid).set({
@@ -69,9 +69,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating profile:", err);
       throw err;
     }
-  };
+  }, [uuid]);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     setUuid(null);
     setRoles([]);
     setName(null);
@@ -81,7 +81,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessionStorage.removeItem('quiz-user-name');
     sessionStorage.removeItem('quiz-exp');
     sessionStorage.removeItem('quiz-organizer');
-  };
+  }, []);
 
   return (
     <UserContext.Provider value={{ uuid, roles, name, exp, isAuthorized, setUserData, updateProfile, logout }}>

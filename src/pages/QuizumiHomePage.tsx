@@ -137,10 +137,24 @@ const QuizumiHomePage = () => {
                 </Card>
             </div>
             
-            <div className="mt-16 text-slate-400 text-sm font-medium flex items-center gap-4">
-                <span>© 2026 Socrato Labs</span>
-                <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                <button onClick={() => setShowReleaseNotes(true)} className="hover:text-gl-orange-500 transition-colors">Release Notes</button>
+            <div className="mt-16 text-slate-400 text-sm font-medium flex flex-col sm:flex-row items-center gap-4 mb-8">
+                <div className="flex items-center gap-4">
+                    <span>© 2026 Socrato Labs</span>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                    <button onClick={() => setShowReleaseNotes(true)} className="hover:text-gl-orange-500 transition-colors">Release Notes</button>
+                </div>
+                
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-500 ${!isAuthorized ? 'bg-gl-orange-50 border border-gl-orange-100 animate-pulse' : ''}`}>
+                    {!isAuthorized && <span className="text-gl-orange-500 text-[10px] font-black uppercase tracking-wider">New</span>}
+                    <a 
+                        href="https://globallogic.atlassian.net/servicedesk/customer/portal/30/group/344/create/1533" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={`font-bold transition-colors ${!isAuthorized ? 'text-gl-orange-600 hover:text-gl-orange-700' : 'hover:text-gl-orange-500'}`}
+                    >
+                        Request Organizer Access
+                    </a>
+                </div>
             </div>
         </div>
     );

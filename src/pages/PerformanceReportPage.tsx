@@ -9,7 +9,6 @@ import { PageLoader } from '../components/PageLoader';
 import { PerformanceReport } from '../components/PerformanceReport';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 
 const PerformanceReportPage = () => {
     const { quizId } = useParams<{ quizId: string }>();
@@ -269,16 +268,25 @@ const PerformanceReportPage = () => {
             `;
 
             try {
-                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_2 as string });
-                const response: GenerateContentResponse = await ai.models.generateContent({
-                    model: 'gemini-flash-latest',
-                    contents: prompt,
+                const response = await fetch("/api/ai/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "gemini-3-flash-preview",
+                        contents: prompt
+                    })
                 });
-                const text = response.text;
-                setRecommendations({ loading: false, text: text });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Failed to generate recommendations via backend");
+                }
+
+                const data = await response.json();
+                setRecommendations({ loading: false, text: data.text });
             } catch (error) {
-                console.error("Error generating recommendations:", error);
-                setRecommendations({ loading: false, text: "Could not generate AI recommendations. Please check your API key and network connection." });
+                console.error("Error generating recommendations via backend:", error);
+                setRecommendations({ loading: false, text: "Could not generate AI recommendations via backend. Please check server logs." });
             }
         };
 

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import { GoogleGenAI } from "@google/genai";
 
 async function startServer() {
   const app = express();
@@ -7,12 +8,40 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Initialize Gemini AI on the backend
+  const apiKey = process.env.GEMINI_API_KEY_2;
+  const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
   // Security Headers - Required for the app to run securely in the AI Studio iframe
   app.use((req, res, next) => {
     res.setHeader('Content-Security-Policy', "frame-ancestors globallogic.com *.globallogic.com;");
     res.setHeader('X-Frame-Options', 'ALLOW-FROM https://globallogic.com/');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     next();
+  });
+
+  // AI Generation Endpoint
+  app.post("/api/ai/generate", async (req, res) => {
+    if (!ai) {
+      return res.status(500).json({ error: "Gemini API Key 2 is not configured on the server." });
+    }
+
+    const { model, contents, config } = req.body;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: model || "gemini-3-flash-preview",
+        contents,
+        config
+      });
+      res.json({ text: response.text });
+    } catch (error: any) {
+      console.error("Backend AI Generation Error:", error);
+      res.status(error.status || 500).json({ 
+        error: error.message || "Failed to generate content",
+        details: error.response?.data || error
+      });
+    }
   });
 
   // Backend API for token authentication (Example of server-side logic)
@@ -51,7 +80,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    // Server started
   });
 }
 

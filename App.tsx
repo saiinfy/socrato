@@ -34,9 +34,13 @@ const AppContent = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
+      if (!data) return;
+
+      // Extract token from various possible structures
       const token = data.token || data.value || data.data?.token || (typeof data === 'string' ? data : null);
       
-      if (token) {
+      // Basic JWT validation: must be a string with at least two dots
+      if (typeof token === 'string' && token.split('.').length === 3) {
         try {
           const decoded: any = jwtDecode(token);
           const platform = decoded.platform || {};
@@ -46,41 +50,49 @@ const AppContent = () => {
           const extractedExp = decoded.exp;
 
           if (extractedUuid) {
-            // Verify token with backend
-            fetch('/api/auth', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token })
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.status === 'authorized') {
-                setUserData(extractedUuid, extractedRoles, extractedExp);
-                setTokenReceived(true);
-                setTimerExpired(false);
-              } else {
-                console.error('Backend authorization failed:', data.error);
-              }
-            })
-            .catch(err => console.error('Error verifying token with backend:', err));
+            // Only fetch if we don't have a UUID yet, or if the UUID/Exp has changed
+            if (extractedUuid !== uuid || extractedExp !== exp) {
+              fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (data.status === 'authorized') {
+                  setUserData(extractedUuid, extractedRoles, extractedExp);
+                  setTokenReceived(true);
+                  setTimerExpired(false);
+                } else {
+                  console.error('Backend authorization failed:', data.error);
+                }
+              })
+              .catch(err => console.error('Error verifying token with backend:', err));
+            } else {
+              // Already have this token/user, just ensure UI state is correct
+              setTokenReceived(true);
+              setTimerExpired(false);
+            }
           }
         } catch (error) {
-          console.error('Error decoding token:', error);
+          // If it's not a valid JWT, just ignore it (it might be a different message type)
+          if (typeof token === 'string' && token.includes('.')) {
+            console.error('Error decoding potential token:', error);
+          }
         }
       }
     };
 
     window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setUserData, uuid, exp]);
 
-    // 1. Send ONLY 'ready' signal initially
+  // Send ready signal ONLY ONCE on mount
+  useEffect(() => {
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'ready' }, '*');
     }
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [setUserData]);
+  }, []);
 
   // Token refresh logic based on exp
   useEffect(() => {
@@ -91,7 +103,6 @@ const AppContent = () => {
       // If expired or about to expire in 10 seconds
       if (currentTime >= exp - 10) {
         if (window.parent !== window) {
-          console.log("Token expired or expiring soon, sending 'token_request'...");
           window.parent.postMessage({ type: 'token_request' }, '*');
         }
       }
